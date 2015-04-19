@@ -218,7 +218,7 @@ static volatile uint8_t portSnapshotD;
 /* MEGA SERIES ************************************************************************/
 /* MEGA SERIES ************************************************************************/
 #elif defined __AVR_ATmega640__ || defined __AVR_ATmega2560__ || defined __AVR_ATmega1280__ || \
-  defined __AVR_ATmega1281__ || defined __AVR_ATmega1284P__ || defined __AVR_ATmega2561__
+  defined __AVR_ATmega1281__ || defined __AVR_ATmega2561__
 #define ARDUINO_MEGA
 
 const uint8_t PROGMEM digital_pin_to_port_bit_number_PGM[] = {
@@ -636,7 +636,6 @@ void enableInterrupt(uint8_t interruptDesignator, interruptFunctionType userFunc
         EIFR |= _BV(3);
         EIMSK |= _BV(3);
         break;
-#if !defined (__AVR_ATmega1284P__)
       case  2 : // INT4
         functionPointerArrayEXTERNAL[4] = userFunction;
         EIMSK &= ~_BV(4);
@@ -669,7 +668,6 @@ void enableInterrupt(uint8_t interruptDesignator, interruptFunctionType userFunc
         EIFR |= _BV(7);
         EIMSK |= _BV(7);
         break;
-#endif /* !defined (__AVR_ATmega1284P__) */
     }
 #elif defined ARDUINO_LEONARDO
     switch (arduinoPin) {
@@ -821,7 +819,6 @@ void disableInterrupt (uint8_t interruptDesignator) {
         EICRA &= (~_BV(6) & ~_BV(7));
         EIFR |= _BV(3);
         break;
-#if !defined (__AVR_ATmega1284P__)
       case  2 : // INT4
         EIMSK &= ~_BV(4);
         EICRB &= (~_BV(0) & ~_BV(1));
@@ -842,7 +839,6 @@ void disableInterrupt (uint8_t interruptDesignator) {
         EICRB &= (~_BV(6) & ~_BV(7));
         EIFR |= _BV(7);
         break;
-#endif /* !defined (__AVR_ATmega1284P__) */
     }
 #elif defined ARDUINO_LEONARDO
     switch (arduinoPin) {
@@ -895,15 +891,13 @@ ISR(INT2_vect) {
   (*functionPointerArrayEXTERNAL[2])();
 }
 
-#if !defined (__AVR_ATmega1284P__)
 ISR(INT3_vect) {
   (*functionPointerArrayEXTERNAL[3])();
 }
-#endif /* !defined (__AVR_ATmega1284P__) */
 
 #endif
 
-#if defined ARDUINO_MEGA && !defined (__AVR_ATmega1284P__)
+#if defined ARDUINO_MEGA
 ISR(INT4_vect) {
   (*functionPointerArrayEXTERNAL[4])();
 }
@@ -1049,7 +1043,7 @@ ISR(PORTD_VECT) {
   exitPORTDISR: return;
 }
 
-#elif defined ARDUINO_MEGA && !defined (__AVR_ATmega1284P__)
+#elif defined ARDUINO_MEGA
 ISR(PORTJ_VECT) {
   uint8_t current;
   uint8_t interruptMask;
