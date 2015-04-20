@@ -214,6 +214,124 @@ static volatile uint8_t portSnapshotD;
 #define PORTC_VECT PCINT1_vect
 #define PORTD_VECT PCINT2_vect
 
+#elif defined __AVR_ATmega1284P__
+/* AVR Mega 1284p *********************************************************************/
+#define M1284P
+const uint8_t PROGMEM digital_pin_to_port_bit_number_PGM[] = {
+  0, // 0 == port B, 0
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  0, // 8 == port D, 0
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  0, // 16 == port C, 0
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  0, // 24 == port A, 0
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7 // 31
+};
+
+interruptFunctionType functionPointerArrayEXTERNAL[3];
+
+struct functionPointersPortB {
+  interruptFunctionType pinZero;
+  interruptFunctionType pinOne;
+  interruptFunctionType pinTwo;
+  interruptFunctionType pinThree;
+  interruptFunctionType pinFour;
+  interruptFunctionType pinFive;
+  interruptFunctionType pinSix;
+  interruptFunctionType pinSeven;
+};
+typedef struct functionPointersPortB functionPointersPortB;
+
+functionPointersPortB portBFunctions = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+struct functionPointersPortD {
+  interruptFunctionType pinZero;
+  interruptFunctionType pinOne;
+  interruptFunctionType pinTwo;
+  interruptFunctionType pinThree;
+  interruptFunctionType pinFour;
+  interruptFunctionType pinFive;
+  interruptFunctionType pinSix;
+  interruptFunctionType pinSeven;
+};
+typedef struct functionPointersPortD functionPointersPortD;
+
+functionPointersPortD portDFunctions = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+struct functionPointersPortC {
+  interruptFunctionType pinZero;
+  interruptFunctionType pinOne;
+  interruptFunctionType pinTwo;
+  interruptFunctionType pinThree;
+  interruptFunctionType pinFour;
+  interruptFunctionType pinFive;
+  interruptFunctionType pinSix;
+  interruptFunctionType pinSeven;
+};
+typedef struct functionPointersPortC functionPointersPortC;
+
+functionPointersPortC portCFunctions = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+struct functionPointersPortA {
+  interruptFunctionType pinZero;
+  interruptFunctionType pinOne;
+  interruptFunctionType pinTwo;
+  interruptFunctionType pinThree;
+  interruptFunctionType pinFour;
+  interruptFunctionType pinFive;
+  interruptFunctionType pinSix;
+  interruptFunctionType pinSeven;
+};
+typedef struct functionPointersPortA functionPointersPortA;
+
+functionPointersPortA portAFunctions = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+// For Pin Change Interrupts; since we're duplicating FALLING and RISING in software,
+// we have to know how we were defined.
+volatile uint8_t risingPinsPORTB=0;
+volatile uint8_t fallingPinsPORTB=0;
+volatile uint8_t risingPinsPORTD=0;
+volatile uint8_t fallingPinsPORTD=0;
+volatile uint8_t risingPinsPORTC=0;
+volatile uint8_t fallingPinsPORTC=0;
+volatile uint8_t risingPinsPORTA=0;
+volatile uint8_t fallingPinsPORTA=0;
+
+// for the saved state of the ports
+static volatile uint8_t portSnapshotB;
+static volatile uint8_t portSnapshotD;
+static volatile uint8_t portSnapshotC;
+static volatile uint8_t portSnapshotA;
+
+#define PORTB_VECT PCINT1_vect
+#define PORTD_VECT PCINT3_vect
+#define PORTC_VECT PCINT2_vect
+#define PORTA_VECT PCINT0_vect
+
 /* MEGA SERIES ************************************************************************/
 /* MEGA SERIES ************************************************************************/
 /* MEGA SERIES ************************************************************************/
@@ -454,6 +572,8 @@ void enableInterrupt(uint8_t interruptDesignator, interruptFunctionType userFunc
   // *************************************************************************************
 #if defined ARDUINO_328
   if ( (interruptDesignator & PINCHANGEINTERRUPT) || (arduinoPin != 2 && arduinoPin != 3) ) {
+#elif defined M1284P
+  if ( (interruptDesignator & PINCHANGEINTERRUPT) || (arduinoPin != 2 && arduinoPin != 10 && arduinoPin != 11) ) {
 #elif defined ARDUINO_MEGA
   // NOTE: PJ2-6 and PE6 & 7 are not exposed on the Arduino, but they are supported here
   // for software interrupts and support of non-Arduino platforms which expose more pins.
@@ -487,6 +607,16 @@ void enableInterrupt(uint8_t interruptDesignator, interruptFunctionType userFunc
       if (portNumber==PD) {
         risingPinsPORTD |= portMask;
       }
+#elif defined M1284P
+      if (portNumber==PD) {
+        risingPinsPORTD |= portMask;
+      }
+      if (portNumber==PC) {
+        risingPinsPORTC |= portMask;
+      }
+      if (portNumber==PA) {
+        risingPinsPORTA |= portMask;
+      }
 #elif defined ARDUINO_MEGA
       if (portNumber==PJ) {
         risingPinsPORTJ |= portMask;
@@ -508,6 +638,16 @@ void enableInterrupt(uint8_t interruptDesignator, interruptFunctionType userFunc
       }
       if (portNumber==PD) {
         fallingPinsPORTD |= portMask;
+      }
+#elif defined M1284P
+      if (portNumber==PD) {
+        fallingPinsPORTD |= portMask;
+      }
+      if (portNumber==PC) {
+        fallingPinsPORTC |= portMask;
+      }
+      if (portNumber==PA) {
+        fallingPinsPORTA |= portMask;
       }
 #elif defined ARDUINO_MEGA
       if (portNumber==PJ) {
@@ -541,6 +681,39 @@ void enableInterrupt(uint8_t interruptDesignator, interruptFunctionType userFunc
       pcmsk=&PCMSK2;
       PCICR |= _BV(2);
     }
+#elif defined M1284P
+    if (portNumber==PB) {
+      calculatedPointer=&portBFunctions.pinZero + portBitNumber;
+      *calculatedPointer = userFunction;
+
+      portSnapshotB=*portInputRegister(portNumber);
+      pcmsk=&PCMSK1;
+      PCICR |= _BV(1);
+    }
+    if (portNumber==PD) {
+      calculatedPointer=&portDFunctions.pinZero + portBitNumber;
+      *calculatedPointer = userFunction;
+
+      portSnapshotD=*portInputRegister(portNumber);
+      pcmsk=&PCMSK3;
+      PCICR |= _BV(3);
+    }
+    if (portNumber==PC) {
+      calculatedPointer=&portCFunctions.pinZero + portBitNumber;
+      *calculatedPointer = userFunction;
+
+      portSnapshotC=*portInputRegister(portNumber);
+      pcmsk=&PCMSK2;
+      PCICR |= _BV(2);
+    }
+    if (portNumber==PA) {
+      calculatedPointer=&portAFunctions.pinZero + portBitNumber;
+      *calculatedPointer = userFunction;
+
+      portSnapshotA=*portInputRegister(portNumber);
+      pcmsk=&PCMSK0;
+      PCICR |= _BV(0);
+    }
 #elif defined ARDUINO_MEGA
     if (portNumber==PJ) {
       calculatedPointer=&portJFunctions.pinZero + portBitNumber;
@@ -563,6 +736,7 @@ void enableInterrupt(uint8_t interruptDesignator, interruptFunctionType userFunc
 #elif defined ARDUINO_LEONARDO
       // No other Pin Change Interrupt ports than B on Leonardo
 #endif
+#if !defined M1284P
     if (portNumber==PB) {
       calculatedPointer=&portBFunctions.pinZero + portBitNumber;
       *calculatedPointer = userFunction;
@@ -571,6 +745,7 @@ void enableInterrupt(uint8_t interruptDesignator, interruptFunctionType userFunc
       pcmsk=&PCMSK0;
       PCICR |= _BV(0);
     }
+#endif
     *pcmsk |= portMask;  // appropriate bit, e.g. this could be PCMSK1 |= portMask;
 
     // With the exception of the Global Interrupt Enable bit in SREG, interrupts on the arduinoPin
@@ -601,6 +776,33 @@ void enableInterrupt(uint8_t interruptDesignator, interruptFunctionType userFunc
       EICRA |= mode;
       EIFR  |= _BV(0); // using a clue from the ATmega2560 datasheet.
       EIMSK |= _BV(0);
+    }
+#elif defined M1284P
+    switch (arduinoPin) {
+      case 10 : // INT0
+        functionPointerArrayEXTERNAL[0] = userFunction;
+        EIMSK &= ~_BV(0);
+        EICRA &= (~_BV(0) & ~_BV(1));
+        EICRA |= mode;
+        EIFR |= _BV(0);
+        EIMSK |= _BV(0);
+        break;
+      case 11 : // INT1
+        functionPointerArrayEXTERNAL[1] = userFunction;
+        EIMSK &= ~_BV(1);
+        EICRA &= (~_BV(2) & ~_BV(3));
+        EICRA |= (mode << 2);
+        EIFR |= _BV(1);
+        EIMSK |= _BV(1);
+        break;
+      case 2 : // INT2
+        functionPointerArrayEXTERNAL[2] = userFunction;
+        EIMSK &= ~_BV(2);
+        EICRA &= (~_BV(4) & ~_BV(5));
+        EICRA |= (mode << 4);
+        EIFR |= _BV(2);
+        EIMSK |= _BV(2);
+        break;
     }
 #elif defined ARDUINO_MEGA
     switch (arduinoPin) {
@@ -730,6 +932,8 @@ void disableInterrupt (uint8_t interruptDesignator) {
   arduinoPin=interruptDesignator & ~PINCHANGEINTERRUPT;
 #if defined ARDUINO_328
   if ( (interruptDesignator & PINCHANGEINTERRUPT) || (arduinoPin != 2 && arduinoPin != 3) ) {
+#elif defined M1284P
+  if ( (interruptDesignator & PINCHANGEINTERRUPT) || (arduinoPin != 2 && arduinoPin != 10 && arduinoPin != 11) ) {
 #elif defined ARDUINO_MEGA
   // NOTE: PJ2-6 and PE6 & 7 are not exposed on the Arduino, but they are supported here
   // for software interrupts and support of non-Arduino platforms which expose more pins.
@@ -750,12 +954,22 @@ void disableInterrupt (uint8_t interruptDesignator) {
       portMask=pgm_read_byte(&digital_pin_to_bit_mask_PGM[arduinoPin]);
       portNumber=pgm_read_byte(&digital_pin_to_port_PGM[arduinoPin]);
     }
+#if defined M1284P
+    if (portNumber == PB) {
+      PCMSK1 &= ~portMask;
+      if (PCMSK1 == 0) { PCICR &= ~_BV(1); };
+      risingPinsPORTB &= ~portMask;
+      fallingPinsPORTB &= ~portMask;
+    }
+#else
     if (portNumber == PB) {
       PCMSK0 &= ~portMask;
       if (PCMSK0 == 0) { PCICR &= ~_BV(0); };
       risingPinsPORTB &= ~portMask;
       fallingPinsPORTB &= ~portMask;
     }
+#endif
+
 #if defined ARDUINO_328
     if (portNumber == PC) {
       PCMSK1 &= ~portMask;
@@ -768,6 +982,25 @@ void disableInterrupt (uint8_t interruptDesignator) {
       if (PCMSK2 == 0) { PCICR &= ~_BV(2); };
       risingPinsPORTD &= ~portMask;
       fallingPinsPORTD &= ~portMask;
+    }
+#elif defined M1284P
+    if (portNumber == PD) {
+      PCMSK3 &= ~portMask;
+      if (PCMSK3 == 0) { PCICR &= ~_BV(3); };
+      risingPinsPORTD &= ~portMask;
+      fallingPinsPORTD &= ~portMask;
+    }
+    if (portNumber == PC) {
+      PCMSK2 &= ~portMask;
+      if (PCMSK2 == 0) { PCICR &= ~_BV(2); };
+      risingPinsPORTC &= ~portMask;
+      fallingPinsPORTC &= ~portMask;
+    }
+    if (portNumber == PA) {
+      PCMSK0 &= ~portMask;
+      if (PCMSK0 == 0) { PCICR &= ~_BV(0); };
+      risingPinsPORTA &= ~portMask;
+      fallingPinsPORTA &= ~portMask;
     }
 #elif defined ARDUINO_MEGA
     if (portNumber == PJ) {
@@ -796,6 +1029,24 @@ void disableInterrupt (uint8_t interruptDesignator) {
       EIMSK &= ~_BV(0);
       EICRA &= (~_BV(0) & ~_BV(1));
       EIFR  |= _BV(0); // using a clue from the ATmega2560 datasheet.
+    }
+#elif defined M1284P
+    switch (arduinoPin) {
+      case 10 : // INT0
+        EIMSK &= ~_BV(0);
+        EICRA &= (~_BV(0) & ~_BV(1));
+        EIFR |= _BV(0);
+        break;
+      case 11 : // INT1
+        EIMSK &= ~_BV(1);
+        EICRA &= (~_BV(2) & ~_BV(3));
+        EIFR |= _BV(1);
+        break;
+      case 2 : // INT2
+        EIMSK &= ~_BV(2);
+        EICRA &= (~_BV(4) & ~_BV(5));
+        EIFR |= _BV(2);
+        break;
     }
 #elif defined ARDUINO_MEGA
     switch (arduinoPin) {
@@ -886,14 +1137,16 @@ ISR(INT1_vect) {
   (*functionPointerArrayEXTERNAL[1])();
 }
 
-#if defined ARDUINO_MEGA || defined ARDUINO_LEONARDO
+#if defined ARDUINO_MEGA || defined ARDUINO_LEONARDO || defined M1284P
 ISR(INT2_vect) {
   (*functionPointerArrayEXTERNAL[2])();
 }
 
+#if !defined M1284P
 ISR(INT3_vect) {
   (*functionPointerArrayEXTERNAL[3])();
 }
+#endif
 
 #endif
 
@@ -965,7 +1218,11 @@ ISR(PORTB_VECT) {
   interruptMask = fallingPinsPORTB & ~current; // steal interruptMask as a temp variable
   interruptMask = interruptMask | tmp;
   interruptMask = changedPins & interruptMask;
+#if defined M1284P
+  interruptMask = PCMSK1 & interruptMask;
+#else
   interruptMask = PCMSK0 & interruptMask;
+#endif
 
 
   portSnapshotB = current;
@@ -1042,6 +1299,65 @@ ISR(PORTD_VECT) {
   if (interruptMask & _BV(7)) portDFunctions.pinSeven();
   exitPORTDISR: return;
 }
+
+ISR(PORTC_VECT) {
+  uint8_t current;
+  uint8_t interruptMask;
+  uint8_t changedPins;
+  uint8_t tmp;
+
+  current=PINC;
+//  changedPins=(portSnapshotB ^ current) &
+//                                       ((risingPinsPORTB & current) | (fallingPinsPORTB & ~current));
+  changedPins   = portSnapshotC ^ current;
+  tmp           = risingPinsPORTC & current;
+  interruptMask = fallingPinsPORTC & ~current; // steal interruptMask as a temp variable
+  interruptMask = interruptMask | tmp;
+  interruptMask = changedPins & interruptMask;
+  interruptMask = PCMSK2 & interruptMask;
+
+  portSnapshotC = current;
+  if (interruptMask == 0) goto exitPORTCISR; // get out quickly if not interested.
+  if (interruptMask & _BV(0)) portCFunctions.pinZero();
+  if (interruptMask & _BV(1)) portCFunctions.pinOne();
+  if (interruptMask & _BV(2)) portCFunctions.pinTwo();
+  if (interruptMask & _BV(3)) portCFunctions.pinThree();
+  if (interruptMask & _BV(4)) portCFunctions.pinFour();
+  if (interruptMask & _BV(5)) portCFunctions.pinFive();
+  if (interruptMask & _BV(6)) portCFunctions.pinSix();
+  if (interruptMask & _BV(7)) portCFunctions.pinSeven();
+  exitPORTCISR: return;
+}
+
+ISR(PORTA_VECT) {
+  uint8_t current;
+  uint8_t interruptMask;
+  uint8_t changedPins;
+  uint8_t tmp;
+
+  current=PINA;
+//  changedPins=(portSnapshotB ^ current) &
+//                                       ((risingPinsPORTB & current) | (fallingPinsPORTB & ~current));
+  changedPins   = portSnapshotA ^ current;
+  tmp           = risingPinsPORTA & current;
+  interruptMask = fallingPinsPORTA & ~current; // steal interruptMask as a temp variable
+  interruptMask = interruptMask | tmp;
+  interruptMask = changedPins & interruptMask;
+  interruptMask = PCMSK0 & interruptMask;
+
+  portSnapshotA = current;
+  if (interruptMask == 0) goto exitPORTAISR; // get out quickly if not interested.
+  if (interruptMask & _BV(0)) portAFunctions.pinZero();
+  if (interruptMask & _BV(1)) portAFunctions.pinOne();
+  if (interruptMask & _BV(2)) portAFunctions.pinTwo();
+  if (interruptMask & _BV(3)) portAFunctions.pinThree();
+  if (interruptMask & _BV(4)) portAFunctions.pinFour();
+  if (interruptMask & _BV(5)) portAFunctions.pinFive();
+  if (interruptMask & _BV(6)) portAFunctions.pinSix();
+  if (interruptMask & _BV(7)) portAFunctions.pinSeven();
+  exitPORTAISR: return;
+}
+
 
 #elif defined ARDUINO_MEGA
 ISR(PORTJ_VECT) {
